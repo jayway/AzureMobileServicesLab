@@ -4,10 +4,12 @@ using System.Resources;
 using System.Windows;
 using System.Windows.Markup;
 using System.Windows.Navigation;
+using AzureMobileServicesLab.WP8.Model;
 using Microsoft.Phone.Controls;
 using Microsoft.Phone.Notification;
 using Microsoft.Phone.Shell;
 using AzureMobileServicesLab.WP8.Resources;
+using Microsoft.WindowsAzure.MobileServices;
 
 namespace AzureMobileServicesLab.WP8
 {
@@ -19,19 +21,25 @@ namespace AzureMobileServicesLab.WP8
         /// <returns>The root frame of the Phone Application.</returns>
         public static PhoneApplicationFrame RootFrame { get; private set; }
 
-        // TODO: Add your mobile service reference
-        // public static MobileServiceClient MobileService = new MobileServiceClient(
-        //     "<your url>",
-        //     "your key"
-        // );
+        public static MobileServiceClient MobileService = new MobileServiceClient(
+            "https://johanwamslab.azure-mobile.net/",
+            "dpvyUnJrTkNvCQGIiuiKcpdTlOMClG96"
+        );
 
         public static HttpNotificationChannel PushChannel { get; private set; }
 
         private async void AccuirePushChannel()
         {
-            // TODO: Implement registration of push channel
-            // Hint: Create/Find HttpNotificationChannel then register it in your Registration table
-            // More info: http://www.windowsazure.com/en-us/documentation/articles/mobile-services-windows-phone-get-started-push
+            PushChannel = HttpNotificationChannel.Find("SurveyPhoneChannel");
+            if (PushChannel == null)
+            {
+                PushChannel = new HttpNotificationChannel("SurveyPhoneChannel");
+                PushChannel.Open();
+                PushChannel.BindToShellToast();
+            }
+
+            var registration = new Registration {Handle = PushChannel.ChannelUri.ToString()};
+            await MobileService.GetTable<Registration>().InsertAsync(registration);
         }
 
         /// <summary>

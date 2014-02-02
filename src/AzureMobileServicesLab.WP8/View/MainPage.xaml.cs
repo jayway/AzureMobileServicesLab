@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -11,6 +13,7 @@ using AzureMobileServicesLab.WP8.Model;
 using Microsoft.Phone.Controls;
 using Microsoft.Phone.Shell;
 using AzureMobileServicesLab.WP8.Resources;
+using Microsoft.WindowsAzure.MobileServices;
 
 namespace AzureMobileServicesLab.WP8
 {
@@ -21,16 +24,24 @@ namespace AzureMobileServicesLab.WP8
         {
             InitializeComponent();
 
-            // TODO: Add handler for toast notification
-            // App.PushChannel.ShellToastNotificationReceived += ...
+            App.PushChannel.ShellToastNotificationReceived += (sender, args) =>
+            {
+                var message = new StringBuilder();
+                message.AppendLine("Received Toast!");
+                foreach (var key in args.Collection.Keys)
+                {
+                    message.AppendFormat("{0}: {1}\n", key, args.Collection[key]);
+                }
+
+                Dispatcher.BeginInvoke(() => MessageBox.Show(message.ToString()));
+            };
         }
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
             if (e.NavigationMode == NavigationMode.New)
             {
-                // TODO: Implement login
-                // http://www.windowsazure.com/en-us/documentation/articles/mobile-services-windows-phone-get-started-users/?fb=sv-se
+                await App.MobileService.LoginAsync(MobileServiceAuthenticationProvider.MicrosoftAccount);
             }
 
             await Refresh();
@@ -38,9 +49,17 @@ namespace AzureMobileServicesLab.WP8
 
         private async Task Refresh()
         {
-            // TODO: Get unanswered questions and add them to UnansweredQuestionsList
+            var user = App.MobileService.CurrentUser;
+            if (user != null)
+            {
+                var parameters = new Dictionary<string, string> {{"userId", user.UserId}};
+                
+                var unanswered = await App.MobileService.InvokeApiAsync<IEnumerable<Question>>("unanswered", HttpMethod.Get, parameters);
+                UnansweredQuestionsList.ItemsSource = unanswered.ToList();
 
-            // TODO: Get answered questions and add them to AnsweredQuestionsList
+                var completed = await App.MobileService.InvokeApiAsync<IEnumerable<Question>>("completed", HttpMethod.Get, parameters);
+                CompletedQuestionsList.ItemsSource = completed.ToList();
+            }
         }
 
         private void NewQuestionButton_Click(object sender, RoutedEventArgs e)
